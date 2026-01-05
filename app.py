@@ -13,6 +13,9 @@ from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
 
+# ⭐ [추가] 앱이 켜질 때마다 DB 테이블이 있는지 확실하게 체크!
+db.init_db()
+
 # ==========================================
 # 1. 기본 설정 및 API 연결
 # ==========================================
