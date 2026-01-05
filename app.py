@@ -335,13 +335,13 @@ else:
                         video_id = extract_video_id(url)
                         if "instagram.com" in url:
                             st.toast("📸 인스타그램 감지")
-                            raw_text, source_type, model = get_instagram_content(url)
+                            raw_text, source_type = get_instagram_content(url)
                         elif video_id: 
                             st.toast("🎥 유튜브 감지")
-                            raw_text, source_type, model = get_youtube_data(url)
+                            raw_text, source_type = get_youtube_data(url)
                         else:
                             st.toast("📝 블로그 감지")
-                            raw_text, source_type, model = get_blog_content(url)
+                            raw_text, source_type = get_blog_content(url)
 
                         if raw_text and "실패" not in str(source_type):
                             try:
