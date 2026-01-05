@@ -190,3 +190,11 @@ def delete_recipes_list(recipe_ids, user_id):
     c.execute(sql, recipe_ids + [user_id])
     conn.commit()
     conn.close()
+
+def is_nickname_taken(nickname):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT 1 FROM users WHERE nickname=?', (nickname,))
+    result = c.fetchone()
+    conn.close()
+    return result is not None

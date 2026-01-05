@@ -9,7 +9,6 @@ import extra_streamlit_components as stx
 # 🍪 쿠키 관리자 설정
 # ==========================================
 def get_cookie_manager(key="init"): 
-    # key 값을 인자로 받아서, 상황에 따라 다른 키를 쓸 수 있게 함
     return stx.CookieManager(key=key)
 
 # ==========================================
@@ -157,11 +156,13 @@ def login_ui():
                  st.session_state['is_id_checked'] = False
 
             new_pw = st.text_input("비밀번호 (8자 이상, 영문+숫자)", type="password")
+            
+            # [수정됨] 비밀번호 에러 메시지가 들어갈 공간을 미리 확보!
+            pw_error_placeholder = st.empty()
+            
             new_pw_chk = st.text_input("비밀번호 확인", type="password")
             
-            c_nick = st.container() # 닉네임 위치 확보
-            
-            # [변경] 이메일 입력 UI 개선 (분리형 + 도메인 선택)
+            # [변경] 이메일 입력 UI
             st.markdown("📧 이메일 (ID/PW 찾기에 사용)")
             c_mail_id, c_at, c_mail_domain = st.columns([3, 0.3, 4], vertical_alignment="bottom")
             
@@ -173,13 +174,11 @@ def login_ui():
                 domain_options = ["직접 입력", "naver.com", "gmail.com", "daum.net", "kakao.com", "icloud.com"]
                 selected_domain = st.selectbox("도메인 선택", domain_options)
             
-            # 직접 입력 선택 시 텍스트 입력창 표시
             if selected_domain == "직접 입력":
                 email_domain_input = st.text_input("도메인 직접 입력", placeholder="ex) company.com")
             else:
                 email_domain_input = selected_domain
 
-            # 닉네임 (레이아웃 맞추기 위해 아래로 이동)
             new_nickname = st.text_input("닉네임")
             
             with st.expander("🔽 선택 정보 입력 (생년월일, 성별, 주소)"):
@@ -193,23 +192,43 @@ def login_ui():
             agree = st.checkbox("(필수) 이용약관 및 개인정보 처리방침에 동의합니다.")
 
             if st.button("회원가입 완료", type="primary", use_container_width=True):
+                # 1. 검증 로직 실행
+                pw_valid, pw_msg = validate_password(new_pw)
+                
                 # 이메일 조합
                 full_email = f"{email_id_input}@{email_domain_input}"
 
+                has_error = False
+
+                # [수정됨] 에러 메시지 처리 순서 중요!
+                
+                # 1. 비밀번호 유효성 검사 실패 시 -> 아까 만든 placeholder에 표시
+                if not pw_valid:
+                    pw_error_placeholder.error(pw_msg)
+                    has_error = True
+                
+                # 2. 다른 필수 항목 검사
                 if not st.session_state['is_id_checked'] or new_user != st.session_state['checked_id_value']:
                     st.error("아이디 중복확인을 해주세요.")
+                    has_error = True
                 elif not (new_pw and new_nickname and email_id_input and email_domain_input):
                     st.error("필수 정보를 입력해주세요.")
+                    has_error = True
                 elif not agree:
                     st.error("약관에 동의해주세요.")
+                    has_error = True
                 elif new_pw != new_pw_chk:
                     st.error("비밀번호가 일치하지 않습니다.")
-                elif not validate_password(new_pw)[0]:
-                    st.error(validate_password(new_pw)[1])
+                    has_error = True
                 elif db.is_nickname_taken(new_nickname):
+                    # database.py가 업데이트 되었다면 이 부분 에러 없이 작동합니다!
                     st.error("이미 사용 중인 닉네임입니다.")
-                else:
+                    has_error = True
+
+                # 에러가 하나도 없을 때만 가입 진행
+                if not has_error:
                     birth_str = new_birth.strftime("%Y-%m-%d")
+                    # add_user 함수도 database.py에 잘 정의되어 있어야 함
                     if db.add_user(new_user, new_pw, new_nickname, "", birth_str, full_email, new_address, new_gender):
                         st.session_state['signup_success'] = True
                         st.session_state['new_user_info'] = {
@@ -222,7 +241,7 @@ def login_ui():
                     else:
                         st.error("가입 중 오류가 발생했습니다.")
 
-    # --- [탭 3] 계정 찾기 (탈퇴 기능 제거됨) ---
+    # --- [탭 3] 계정 찾기 ---
     with tab_find:
         find_mode = st.radio("메뉴 선택", ["아이디 찾기", "비밀번호 재설정"], horizontal=True)
         st.divider()
