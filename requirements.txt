@@ -1,0 +1,9 @@
+streamlit
+streamlit-option-menu
+google-generativeai
+beautifulsoup4
+requests
+yt-dlp
+instaloader
+youtube-transcript-api
+extra-streamlit-components
