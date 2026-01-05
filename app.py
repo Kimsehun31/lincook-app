@@ -26,19 +26,22 @@ st.set_page_config(
 )
 
 # 비밀번호 관리 (secrets.toml)
+model = None
+
 try:
+    # 2. secrets.toml에 있는 이름(GOOGLE_API_KEY)과 똑같이 맞춰줍니다.
     if "GOOGLE_API_KEY" in st.secrets:
         api_key = st.secrets["GOOGLE_API_KEY"]
         genai.configure(api_key=api_key)
+        
+        # 3. 모델을 생성해서 'model' 변수에 담습니다.
         model = genai.GenerativeModel('gemini-1.5-flash')
     else:
-        st.error("secrets.toml에 API 키가 없습니다.")
-        model = None
+        st.error("secrets.toml에서 API 키를 찾을 수 없습니다.")
+
 except Exception as e:
-    st.warning("API 키 설정 중 오류가 발생했습니다. 로컬 환경인지 확인해주세요.")
-    # 로컬 테스트용 (필요시 주석 해제하여 사용)
-    # genai.configure(api_key="여기에_직접_키를_넣으세요")
-    # model = genai.GenerativeModel('gemini-1.5-flash')
+    st.warning(f"API 키 설정 중 오류가 발생했습니다: {e}")
+
 
 # ==========================================
 # 🛒 장보기 계산기 함수
@@ -332,17 +335,17 @@ else:
                         video_id = extract_video_id(url)
                         if "instagram.com" in url:
                             st.toast("📸 인스타그램 감지")
-                            raw_text, source_type = get_instagram_content(url)
+                            raw_text, source_type, model = get_instagram_content(url)
                         elif video_id: 
                             st.toast("🎥 유튜브 감지")
-                            raw_text, source_type = get_youtube_data(url)
+                            raw_text, source_type, model = get_youtube_data(url)
                         else:
                             st.toast("📝 블로그 감지")
-                            raw_text, source_type = get_blog_content(url)
+                            raw_text, source_type, model = get_blog_content(url)
 
                         if raw_text and "실패" not in str(source_type):
                             try:
-                                recipe_data = cook_recipe(raw_text, source_type)
+                                recipe_data = cook_recipe(raw_text, source_type, model)
                                 st.session_state['generated_data'] = recipe_data
                                 st.session_state['current_url'] = url
                                 st.session_state['current_source'] = source_type
