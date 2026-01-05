@@ -335,7 +335,7 @@ else:
                         video_id = extract_video_id(url)
                         if "instagram.com" in url:
                             st.toast("📸 인스타그램 감지")
-                            raw_text, source_type = get_instagram_content(url)
+                            raw_text, source_type, model = get_instagram_content(url)
                         elif video_id: 
                             st.toast("🎥 유튜브 감지")
                             raw_text, source_type = get_youtube_data(url)
@@ -354,47 +354,47 @@ else:
 
         if 'generated_data' in st.session_state:
             data = st.session_state['generated_data']
-            st.divider()
-            with st.container(border=True):
-                c_head, c_btn = st.columns([4, 1])
-                with c_head: st.subheader(f"✨ {data.get('title')}")
-                st.markdown(f"**{data.get('cuisine_type')}** | **{data.get('dish_type')}**")
-                
-                # 저장 전 미리보기
-                show_link_card(st.session_state.get('current_url'))
+    
+            # [방어 코드] 데이터가 비어있으면(None) 에러 내지 말고 안내 메시지 띄우기
+            if data is None:
+                st.warning("😓 AI가 내용을 분석하지 못했습니다. 영상에 자막이 없거나, 내용이 너무 짧을 수 있습니다.")
+            else:
                 st.divider()
+                with st.container(border=True):
+                    c_head, c_btn = st.columns([4, 1])
+                    # 안전하게 .get 사용
+                    with c_head: st.subheader(f"✨ {data.get('title', '제목 없음')}")
+                    st.markdown(f"**{data.get('cuisine_type', '기타')}** | **{data.get('dish_type', '기타')}**")
+            
+                    # 저장 전 미리보기
+                    show_link_card(st.session_state.get('current_url'))
+                    st.divider()
 
-                ing_display = data.get('ingredients')
-                if isinstance(ing_display, list):
-                    ing_text = ", ".join([f"{i['name']}({i['amount']})" for i in ing_display])
-                    st.info(f"🥕 핵심 재료: {ing_text}")
-                else: st.info(f"🥕 핵심 재료: {ing_display}")
-                
-                st.markdown(data.get('markdown_content'))
-                st.divider()
-                col_save, col_down = st.columns([1, 1])
-                with col_save:
-                    if st.button("📥 내 요리책에 저장", type="primary", use_container_width=True):
-                        try:
-                            # 1. 재료 데이터를 문자열로 변환
-                            ing_str = json.dumps(data.get('ingredients'), ensure_ascii=False)
-        
-                            # 2. DB 저장 시도
-                            db.add_recipe(st.session_state['user_id'], data.get('title'), data.get('markdown_content'),
+                    ing_display = data.get('ingredients')
+                    if isinstance(ing_display, list):
+                        # 리스트 형태일 때 에러 방지 처리
+                        ing_text = ", ".join([f"{i.get('name','')}({i.get('amount','')})" for i in ing_display if isinstance(i, dict)])
+                        st.info(f"🥕 핵심 재료: {ing_text}")
+                    else: 
+                        st.info(f"🥕 핵심 재료: {ing_display}")
+            
+                    st.markdown(data.get('markdown_content', '내용이 없습니다.'))
+                    st.divider()
+                    col_save, col_down = st.columns([1, 1])
+                    with col_save:
+                        if st.button("📥 내 요리책에 저장", type="primary", use_container_width=True):
+                            try:
+                                ing_str = json.dumps(data.get('ingredients'), ensure_ascii=False)
+                                db.add_recipe(st.session_state['user_id'], data.get('title'), data.get('markdown_content'),
                                 st.session_state['current_url'], st.session_state['current_source'],
-                                data.get('cuisine_type'), data.get('dish_type'), ing_str)
-        
-                            # 3. 성공 시 축하 효과  
-                            st.balloons()
-                            st.toast("저장되었습니다! 📚")
-        
-                        except Exception as e:
-                            # 4. 실패 시 빨간 박스 대신 예쁜 경고창 출력
-                            st.error("저장에 실패했습니다. 잠시 후 다시 시도해주세요.")
-                            print(f"DB 저장 오류: {e}") # 개발자 확인용 (콘솔에만 출력됨)
-                with col_down:
-                     st.download_button("💾 파일로 저장", data.get('markdown_content'), "recipe.md", use_container_width=True)
-                
+                                    data.get('cuisine_type'), data.get('dish_type'), ing_str)
+                                st.balloons()
+                                st.toast("저장되었습니다! 📚")
+                            except Exception as e:
+                                st.error("저장 중 오류가 발생했습니다.")
+                    with col_down:
+                        st.download_button("💾 파일로 저장", data.get('markdown_content', ''), "recipe.md", use_container_width=True)
+
     # --- 메뉴 2: 나의 요리책 ---
     elif selected == "나의 요리책":
         if 'edit_mode_id' not in st.session_state: st.session_state['edit_mode_id'] = None
